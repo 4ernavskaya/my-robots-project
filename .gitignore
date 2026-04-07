@@ -1,0 +1,8 @@
+/.metadata
+/robots/.settings
+/robots/bin
+eclipse.bat
+# IntelliJ IDEA files
+.idea/
+*.iml
+out/
