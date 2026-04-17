@@ -6,3 +6,8 @@ eclipse.bat
 .idea/
 *.iml
 out/.DS_Store
+.DS_Store
+out/
+*.class
+*.iml
+.idea/
