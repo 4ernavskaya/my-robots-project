@@ -1,7 +1,5 @@
 package gui;
 
-
-
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Graphics;
@@ -24,16 +22,15 @@ public class GameVisualizer extends JPanel
         Timer timer = new Timer("events generator", true);
         return timer;
     }
-    // Скорости бота
+
     private volatile double m_robotPositionX = 100;
     private volatile double m_robotPositionY = 100;
     private volatile double m_robotDirection = 0;
-
-    private volatile int m_targetPositionX = 100;
+    private volatile int m_targetPositionX = 150;
     private volatile int m_targetPositionY = 100;
 
-    private static final double maxVelocity = 0.2;
-    private static final double maxAngularVelocity = 0.01;
+    private static final double maxVelocity = 0.1;
+    private static final double maxAngularVelocity = 0.001;
 
     public GameVisualizer()
     {
@@ -94,8 +91,8 @@ public class GameVisualizer extends JPanel
     protected void onModelUpdateEvent()
     {
         double distance = distance(m_targetPositionX, m_targetPositionY,
-            m_robotPositionX, m_robotPositionY);
-        if (distance < 1)
+                m_robotPositionX, m_robotPositionY);
+        if (distance < 0.5)
         {
             return;
         }
@@ -122,21 +119,21 @@ public class GameVisualizer extends JPanel
             return max;
         return value;
     }
-// движение бота
+
     private void moveRobot(double velocity, double angularVelocity, double duration)
     {
         velocity = applyLimits(velocity, 0, maxVelocity);
         angularVelocity = applyLimits(angularVelocity, -maxAngularVelocity, maxAngularVelocity);
         double newX = m_robotPositionX + velocity / angularVelocity *
-            (Math.sin(m_robotDirection  + angularVelocity * duration) -
-                Math.sin(m_robotDirection));
+                (Math.sin(m_robotDirection  + angularVelocity * duration) -
+                        Math.sin(m_robotDirection));
         if (!Double.isFinite(newX))
         {
             newX = m_robotPositionX + velocity * duration * Math.cos(m_robotDirection);
         }
         double newY = m_robotPositionY - velocity / angularVelocity *
-            (Math.cos(m_robotDirection  + angularVelocity * duration) -
-                Math.cos(m_robotDirection));
+                (Math.cos(m_robotDirection  + angularVelocity * duration) -
+                        Math.cos(m_robotDirection));
         if (!Double.isFinite(newY))
         {
             newY = m_robotPositionY + velocity * duration * Math.sin(m_robotDirection);
@@ -174,8 +171,6 @@ public class GameVisualizer extends JPanel
         drawTarget(g2d, m_targetPositionX, m_targetPositionY);
     }
 
-
-    // рамки и границы робота
     private static void fillOval(Graphics g, int centerX, int centerY, int diam1, int diam2)
     {
         g.fillOval(centerX - diam1 / 2, centerY - diam2 / 2, diam1, diam2);
@@ -186,15 +181,14 @@ public class GameVisualizer extends JPanel
         g.drawOval(centerX - diam1 / 2, centerY - diam2 / 2, diam1, diam2);
     }
 
-    //внешний вид робота
     private void drawRobot(Graphics2D g, int x, int y, double direction)
     {
         int robotCenterX = round(m_robotPositionX);
         int robotCenterY = round(m_robotPositionY);
         AffineTransform t = AffineTransform.getRotateInstance(direction, robotCenterX, robotCenterY);
         g.setTransform(t);
-        g.setColor(Color.RED);
-        fillOval(g, robotCenterX, robotCenterY, 20, 10);
+        g.setColor(Color.MAGENTA);
+        fillOval(g, robotCenterX, robotCenterY, 30, 10);
         g.setColor(Color.BLACK);
         drawOval(g, robotCenterX, robotCenterY, 30, 10);
         g.setColor(Color.WHITE);
@@ -202,7 +196,7 @@ public class GameVisualizer extends JPanel
         g.setColor(Color.BLACK);
         drawOval(g, robotCenterX  + 10, robotCenterY, 5, 5);
     }
-    //цвет точки
+
     private void drawTarget(Graphics2D g, int x, int y)
     {
         AffineTransform t = AffineTransform.getRotateInstance(0, 0, 0);
