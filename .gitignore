@@ -5,4 +5,4 @@ eclipse.bat
 # IntelliJ IDEA files
 .idea/
 *.iml
-out/
+out/.DS_Store
