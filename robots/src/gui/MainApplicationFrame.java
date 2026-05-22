@@ -6,37 +6,63 @@ import java.awt.Toolkit;
 import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.JInternalFrame;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import log.Logger;
+import model.RobotModel;
+import controller.RobotController;
 
 public class MainApplicationFrame extends JFrame {
     private final javax.swing.JDesktopPane desktopPane = new javax.swing.JDesktopPane();
+    private final Map<String, Rectangle> normalBounds = new HashMap<>();
 
     public MainApplicationFrame() {
         int inset = 50;
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setBounds(inset, inset,
-                screenSize.width - inset * 2,
+                screenSize.width  - inset * 2,
                 screenSize.height - inset * 2);
 
         setContentPane(desktopPane);
 
+        // === MVC ИНИЦИАЛИЗАЦИЯ ===
+        RobotModel model = new RobotModel();
+        RobotController controller = new RobotController(model);
+        controller.start();
+
         LogWindow logWindow = createLogWindow();
         addWindow(logWindow);
+        saveNormalBounds(logWindow);
 
-        GameWindow gameWindow = new GameWindow();
+        // === GAME WINDOW ===
+        GameVisualizer visualizer = new GameVisualizer();
+        visualizer.setModel(model);
+
+        GameWindow gameWindow = new GameWindow(visualizer);
         gameWindow.setSize(400, 400);
         addWindow(gameWindow);
+        saveNormalBounds(gameWindow);
+
+        // === COORDINATE WINDOW ===
+        CoordinateWindow coordWindow = new CoordinateWindow(model);
+        addWindow(coordWindow);
+        saveNormalBounds(coordWindow);
 
         setJMenuBar(generateMenuBar());
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        restoreWindowStates();
+        SwingUtilities.invokeLater(this::restoreWindowStates);
+    }
+
+    private void saveNormalBounds(JInternalFrame frame) {
+        normalBounds.put(frame.getTitle(), frame.getBounds());
     }
 
     protected LogWindow createLogWindow() {
@@ -88,8 +114,20 @@ public class MainApplicationFrame extends JFrame {
         List<WindowConfig> configs = new ArrayList<>();
         for (java.awt.Component comp : desktopPane.getComponents()) {
             if (comp instanceof JInternalFrame frame) {
-                Rectangle bounds = frame.getBounds();
-                int state = frame.isIcon() ? 1 : (frame.isMaximum() ? 2 : 0);
+                Rectangle bounds;
+                int state;
+
+                if (frame.isIcon()) {
+                    state = 1;
+                    bounds = normalBounds.getOrDefault(frame.getTitle(), frame.getBounds());
+                } else if (frame.isMaximum()) {
+                    state = 2;
+                    bounds = normalBounds.getOrDefault(frame.getTitle(), frame.getBounds());
+                } else {
+                    state = 0;
+                    bounds = frame.getBounds();
+                    normalBounds.put(frame.getTitle(), bounds);
+                }
 
                 configs.add(new WindowConfig(
                         frame.getTitle(),
@@ -109,17 +147,39 @@ public class MainApplicationFrame extends JFrame {
     private void restoreWindowStates() {
         try {
             List<WindowConfig> savedConfigs = WindowConfigStorage.loadConfig();
+            if (savedConfigs.isEmpty()) {
+                Logger.debug("Нет сохранённой конфигурации окон.");
+                return;
+            }
+
             for (WindowConfig cfg : savedConfigs) {
                 JInternalFrame target = findFrameByTitle(cfg.getTitle());
                 if (target != null) {
-                    target.setBounds(cfg.getX(), cfg.getY(), cfg.getWidth(), cfg.getHeight());
                     try {
-                        if (cfg.getState() == 1) {
-                            target.setIcon(true);
-                        } else if (cfg.getState() == 2) {
-                            target.setMaximum(true);
+                        switch (cfg.getState()) {
+                            case 1:
+                                if (cfg.getWidth() > 0 && cfg.getHeight() > 0) {
+                                    target.setBounds(cfg.getX(), cfg.getY(), cfg.getWidth(), cfg.getHeight());
+                                }
+                                normalBounds.put(cfg.getTitle(), target.getBounds());
+                                target.setIcon(true);
+                                break;
+                            case 2:
+                                target.setMaximum(true);
+                                break;
+                            default:
+                                target.setBounds(cfg.getX(), cfg.getY(), cfg.getWidth(), cfg.getHeight());
+                                target.setIcon(false);
+                                target.setMaximum(false);
+                                normalBounds.put(cfg.getTitle(), target.getBounds());
+                                break;
+                        }
+
+                        if (cfg.getState() != 1) {
+                            normalBounds.put(cfg.getTitle(), target.getBounds());
                         }
                     } catch (PropertyVetoException e) {
+                        Logger.debug("Ошибка восстановления состояния окна: " + e.getMessage());
                     }
                 }
             }
